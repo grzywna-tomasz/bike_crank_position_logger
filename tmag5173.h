@@ -1,0 +1,1 @@
+void TMAG5173_MainFunction(void);

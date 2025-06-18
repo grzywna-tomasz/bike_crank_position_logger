@@ -1,0 +1,55 @@
+
+LDSCRIPT    = ../stm_autogen_files/STM32F401CCUx_FLASH.ld
+
+HEADERS     = ../stm_autogen_files/Core/Inc
+HEADERS     += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Inc
+HEADERS     += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+HEADERS     += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/include
+HEADERS     += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS
+HEADERS     += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+HEADERS     += ../stm_autogen_files/Drivers/CMSIS/Device/ST/STM32F4xx/Include
+HEADERS     += ../stm_autogen_files/Drivers/CMSIS/Include
+HEADERS     += ..
+
+HEADERS	    += ../Custom_Sources
+
+ASM_SOURCE  = ../stm_autogen_files/startup_stm32f401xc.s
+
+C_SOURCE    = ../stm_autogen_files/Core/Src/main.c
+C_SOURCE    += ../stm_autogen_files/Core/Src/freertos.c
+C_SOURCE    += ../stm_autogen_files/Core/Src/stm32f4xx_it.c
+C_SOURCE    += ../stm_autogen_files/Core/Src/stm32f4xx_hal_msp.c
+C_SOURCE    += ../stm_autogen_files/Core/Src/stm32f4xx_hal_timebase_tim.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c_ex.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_adc.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c
+C_SOURCE    += ../stm_autogen_files/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c
+C_SOURCE    += ../stm_autogen_files/Core/Src/system_stm32f4xx.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/croutine.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/event_groups.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/list.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/queue.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/tasks.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/timers.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c
+C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c
+C_SOURCE    += ../tmag5173.c
