@@ -45,9 +45,9 @@ I2C_HandleTypeDef hi2c2;
 
 SPI_HandleTypeDef hspi1;
 
-osThreadId defaultTaskHandle;
-uint32_t defaultTaskBuffer[ 128 ];
-osStaticThreadDef_t defaultTaskControlBlock;
+osThreadId TMAG5173Handle;
+uint32_t TMAG5173_Buffer[ 128 ];
+osStaticThreadDef_t TMAG5173_ControlBlock;
 osThreadId Test_Task1Handle;
 uint32_t Test_Task1Buffer[ 128 ];
 osStaticThreadDef_t Test_Task1ControlBlock;
@@ -60,7 +60,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_SPI1_Init(void);
-void StartDefaultTask(void const * argument);
+void Tmag5173_Task(void const * argument);
 void StartTask02(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -124,9 +124,9 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadStaticDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128, defaultTaskBuffer, &defaultTaskControlBlock);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  /* definition and creation of TMAG5173 */
+  osThreadStaticDef(TMAG5173, Tmag5173_Task, osPriorityNormal, 0, 128, TMAG5173_Buffer, &TMAG5173_ControlBlock);
+  TMAG5173Handle = osThreadCreate(osThread(TMAG5173), NULL);
 
   /* definition and creation of Test_Task1 */
   osThreadStaticDef(Test_Task1, StartTask02, osPriorityAboveNormal, 0, 128, Test_Task1Buffer, &Test_Task1ControlBlock);
@@ -303,21 +303,21 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartDefaultTask */
+/* USER CODE BEGIN Header_Tmag5173_Task */
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the TMAG5173 thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
+/* USER CODE END Header_Tmag5173_Task */
+void Tmag5173_Task(void const * argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for(;;)
   {
     TMAG5173_MainFunction();
-    osDelay(1);
+    osDelay(10);
   }
   /* USER CODE END 5 */
 }

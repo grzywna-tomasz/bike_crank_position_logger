@@ -7,7 +7,7 @@
 
 /* Config structure for I2C */
 extern I2C_HandleTypeDef hi2c2;
-extern osThreadId defaultTaskHandle;
+extern osThreadId TMAG5173Handle;
 
 #define TMAG5173_DEVICE_CONFIG2         (0x01U)
 #define TMAG5173_SENSOR_CONFIG1         (0x02U)
@@ -77,8 +77,7 @@ static void TMAG5173_ReadContinously(void)
     // TODO add some kind of configuration for selecting only angle for conversion
 
     /* Non blocking read of all axis, conversion status and angle */
-    // HAL_I2C_Mem_Read
-    (void)HAL_I2C_Mem_Read(&hi2c2, TMAG5173_DEVICE_8BIT_ADDRESS, TMAG5173_X_MSB_RESULT_REGISTER, I2C_MEMADD_SIZE_8BIT, TMAG5173_DataBuffer, 9U, TMAG5173_I2C_MAX_TIMEOUT);
+    (void)HAL_I2C_Mem_Read_IT(&hi2c2, TMAG5173_DEVICE_8BIT_ADDRESS, TMAG5173_X_MSB_RESULT_REGISTER, I2C_MEMADD_SIZE_8BIT, TMAG5173_DataBuffer, 9U);
 
     // TODO add nice handling for debug pin management
     HAL_GPIO_WritePin(GPIOA, Debug_pin1_Pin, GPIO_PIN_RESET);
@@ -124,5 +123,5 @@ void TMAG5173_MainFunction(void)
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    vTaskNotifyGiveFromISR(defaultTaskHandle, &xHigherPriorityTaskWoken);
+    vTaskNotifyGiveFromISR(TMAG5173Handle, &xHigherPriorityTaskWoken);
 }
