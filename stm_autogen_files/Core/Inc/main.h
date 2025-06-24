@@ -57,6 +57,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SPI_CS_Pin GPIO_PIN_4
+#define SPI_CS_GPIO_Port GPIOA
 #define Debug_pin0_Pin GPIO_PIN_0
 #define Debug_pin0_GPIO_Port GPIOB
 #define Debug_pin1_Pin GPIO_PIN_1
@@ -65,7 +67,12 @@ void Error_Handler(void);
 #define Debug_pin2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+#ifdef DEBUG
+/* Catch any development error */
+#define DET_ErrorReception()    while(1)
+#else
+#define DET_ErrorReception()
+#endif
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

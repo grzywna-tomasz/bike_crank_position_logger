@@ -53,3 +53,5 @@ C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/CMSI
 C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c
 C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c
 C_SOURCE    += ../tmag5173.c
+C_SOURCE    += ../sd_card.c
+C_SOURCE    += ../sd_card_cfg.c

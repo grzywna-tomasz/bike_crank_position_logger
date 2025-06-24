@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "tmag5173.h"
+#include "sd_card.h"
+#include "std_types.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,9 +50,9 @@ SPI_HandleTypeDef hspi1;
 osThreadId TMAG5173Handle;
 uint32_t TMAG5173_Buffer[ 128 ];
 osStaticThreadDef_t TMAG5173_ControlBlock;
-osThreadId Test_Task1Handle;
-uint32_t Test_Task1Buffer[ 128 ];
-osStaticThreadDef_t Test_Task1ControlBlock;
+osThreadId SDCardHandle;
+uint32_t SDCard_Buffer[ 128 ];
+osStaticThreadDef_t SDCard_ControlBlock;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -61,7 +63,7 @@ static void MX_GPIO_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_SPI1_Init(void);
 void Tmag5173_Task(void const * argument);
-void StartTask02(void const * argument);
+void SDCard_Task(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -128,9 +130,9 @@ int main(void)
   osThreadStaticDef(TMAG5173, Tmag5173_Task, osPriorityNormal, 0, 128, TMAG5173_Buffer, &TMAG5173_ControlBlock);
   TMAG5173Handle = osThreadCreate(osThread(TMAG5173), NULL);
 
-  /* definition and creation of Test_Task1 */
-  osThreadStaticDef(Test_Task1, StartTask02, osPriorityAboveNormal, 0, 128, Test_Task1Buffer, &Test_Task1ControlBlock);
-  Test_Task1Handle = osThreadCreate(osThread(Test_Task1), NULL);
+  /* definition and creation of SDCard */
+  osThreadStaticDef(SDCard, SDCard_Task, osPriorityAboveNormal, 0, 128, SDCard_Buffer, &SDCard_ControlBlock);
+  SDCardHandle = osThreadCreate(osThread(SDCard), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -254,8 +256,8 @@ static void MX_SPI1_Init(void)
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -286,7 +288,17 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(SPI_CS_GPIO_Port, SPI_CS_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, Debug_pin0_Pin|Debug_pin1_Pin|Debug_pin2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : SPI_CS_Pin */
+  GPIO_InitStruct.Pin = SPI_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(SPI_CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : Debug_pin0_Pin Debug_pin1_Pin Debug_pin2_Pin */
   GPIO_InitStruct.Pin = Debug_pin0_Pin|Debug_pin1_Pin|Debug_pin2_Pin;
@@ -322,55 +334,41 @@ void Tmag5173_Task(void const * argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartTask02 */
+/* USER CODE BEGIN Header_SDCard_Task */
+
+static uint8_t Main_RxDataBuffer[1024U];
 /**
-* @brief Function implementing the Test_Task1 thread.
+* @brief Function implementing the SDCard thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask02 */
-void StartTask02(void const * argument)
+/* USER CODE END Header_SDCard_Task */
+void SDCard_Task(void const * argument)
 {
-  /* USER CODE BEGIN StartTask02 */
-
-  // ADC_ChannelConfTypeDef ADC_Channel_Config = {0};
-  // ADC_Channel_Config.Channel = ADC_CHANNEL_0;
-  // ADC_Channel_Config.Rank = 1;
-  // ADC_Channel_Config.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  // volatile uint16_t ADC_Result[3U] = {0U, 0U, 0U};
-
+  Std_ReturnType card_status = E_OK;
+  /* USER CODE BEGIN SDCard_Task */
   /* Infinite loop */
+  card_status = SDCard_InitializeCard();
+
+  for (uint16_t index = 512; index < 1024; index++)
+  {
+    Main_RxDataBuffer[index] = index - 512;
+  }
+
+  card_status = SDCard_WriteSingleBlock(0x00000200U, &Main_RxDataBuffer[512]);
   for(;;)
   {
-  //   /* this is only for testing and getting familiar with ADCs. In future only one channel will be run at the time therefore no smarter implementation (e.g. injection ADC) here */
-  //   for (uint8_t adc_channel = 0; 2U >= adc_channel; adc_channel++)
-  //   {
-  //     ADC_Channel_Config.Channel = adc_channel;
-  //     if (HAL_ADC_ConfigChannel(&hadc1, &ADC_Channel_Config) != HAL_OK)
-  //     {
-  //       Error_Handler();
-  //     }
-
-  //     HAL_GPIO_WritePin(GPIOB, Debug_pin2_Pin, GPIO_PIN_SET);
-  //     HAL_ADC_Start_IT(&hadc1);
-      
-  //     /* Wait for conversion from ADC to be completed */
-  //     if(1U == ulTaskNotifyTake(pdFALSE, 1U))
-  //     {
-  //       HAL_GPIO_WritePin(GPIOB, Debug_pin2_Pin, GPIO_PIN_RESET);
-  //       /* All good, get result */
-  //       ADC_Result[adc_channel] = HAL_ADC_GetValue(&hadc1);
-  //     }
-  //     else
-  //     {
-  //       /* TODO add implementation if ADC fails to execute */
-  //       Error_Handler();
-  //     }
-  //   }
-
-    osDelay(1);
+    if (card_status == E_OK)
+    {
+      card_status = SDCard_ReadSingleBlock(0x000000200U, Main_RxDataBuffer);
+    }
+    else
+    {
+      DET_ErrorReception();
+    }
+    osDelay(10);
   }
-  /* USER CODE END StartTask02 */
+  /* USER CODE END SDCard_Task */
 }
 
 /**
