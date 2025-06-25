@@ -1,4 +1,9 @@
-// {
+{
+    "files.associations": {
+        "diskio.h": "c",
+        "sd_card.h": "c"
+    }
+} // {
 //     "cmake.configureOnOpen": false,
 //         "files.exclude": {
 //         "stm_autogen_files/Drivers/CMSIS/Core/Include": true,

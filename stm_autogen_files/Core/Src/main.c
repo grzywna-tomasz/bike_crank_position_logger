@@ -25,6 +25,7 @@
 #include "tmag5173.h"
 #include "sd_card.h"
 #include "std_types.h"
+#include "ff.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -337,6 +338,11 @@ void Tmag5173_Task(void const * argument)
 /* USER CODE BEGIN Header_SDCard_Task */
 
 static uint8_t Main_RxDataBuffer[1024U];
+
+FATFS FileSystem;
+FIL file;
+uint32_t BytesWrittenInfo;
+uint16_t test_var = 0x1234;
 /**
 * @brief Function implementing the SDCard thread.
 * @param argument: Not used
@@ -350,22 +356,46 @@ void SDCard_Task(void const * argument)
   /* Infinite loop */
   card_status = SDCard_InitializeCard();
 
-  for (uint16_t index = 512; index < 1024; index++)
+  if (FR_OK != f_mount(&FileSystem, "", 1))
   {
-    Main_RxDataBuffer[index] = index - 512;
+    while(1);
+  }
+  
+  /* Create file with Append mode */
+  if (FR_OK != f_open(&file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS))
+  {
+    while(1);
   }
 
-  card_status = SDCard_WriteSingleBlock(0x00000200U, &Main_RxDataBuffer[512]);
+  /* Set Read/Write pointer to end of file to prepare for data writing */
+  if (FR_OK != f_lseek(&file, f_size(&file)))
+  {
+    while(1);
+  }
+
+  /* Indicate that there is new record */
+  f_printf(&file, "######");
+  // osDelay(10);
+  for (uint8_t i = 0; i < 255; i++)
+  {
+    f_printf(&file, "%d, %d\n", i, test_var);
+  }
+  // osDelay(10);
+  f_printf(&file, "%d, %d\n", 12, test_var);
+  osDelay(10);
+
+  // f_write(&file, "Hello SD Card!\r\n", 16, &BytesWrittenInfo);
+  f_close(&file);
   for(;;)
   {
-    if (card_status == E_OK)
-    {
-      card_status = SDCard_ReadSingleBlock(0x000000200U, Main_RxDataBuffer);
-    }
-    else
-    {
-      DET_ErrorReception();
-    }
+    // if (card_status == E_OK)
+    // {
+    //   card_status = SDCard_ReadSingleBlock(0x000000200U, Main_RxDataBuffer);
+    // }
+    // else
+    // {
+    //   DET_ErrorReception();
+    // }
     osDelay(10);
   }
   /* USER CODE END SDCard_Task */

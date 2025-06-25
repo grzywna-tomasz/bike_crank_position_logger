@@ -9,6 +9,7 @@ HEADERS     += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/CMSI
 HEADERS     += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
 HEADERS     += ../stm_autogen_files/Drivers/CMSIS/Device/ST/STM32F4xx/Include
 HEADERS     += ../stm_autogen_files/Drivers/CMSIS/Include
+HEADERS     += ../fatfs
 HEADERS     += ..
 
 HEADERS	    += ../Custom_Sources
@@ -55,3 +56,5 @@ C_SOURCE    += ../stm_autogen_files/Middlewares/Third_Party/FreeRTOS/Source/port
 C_SOURCE    += ../tmag5173.c
 C_SOURCE    += ../sd_card.c
 C_SOURCE    += ../sd_card_cfg.c
+C_SOURCE    += ../fatfs/diskio.c
+C_SOURCE    += ../fatfs/ff.c

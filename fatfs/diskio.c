@@ -9,6 +9,7 @@
 
 #include "ff.h"			/* Obtains integer types */
 #include "diskio.h"		/* Declarations of disk functions */
+#include "sd_card.h"
 
 /* Definitions of physical drive number for each drive */
 #define DEV_RAM		0	/* Example: Map Ramdisk to physical drive 0 */
@@ -20,36 +21,12 @@
 /* Get Drive Status                                                      */
 /*-----------------------------------------------------------------------*/
 
-DSTATUS disk_status (
+DSTATUS disk_status(
 	BYTE pdrv		/* Physical drive nmuber to identify the drive */
 )
 {
-	DSTATUS stat;
-	int result;
-
-	switch (pdrv) {
-	case DEV_RAM :
-		result = RAM_disk_status();
-
-		// translate the reslut code here
-
-		return stat;
-
-	case DEV_MMC :
-		result = MMC_disk_status();
-
-		// translate the reslut code here
-
-		return stat;
-
-	case DEV_USB :
-		result = USB_disk_status();
-
-		// translate the reslut code here
-
-		return stat;
-	}
-	return STA_NOINIT;
+	/* No disk status implementation. This is simple project and I assume "it just works" */
+	return RES_OK;
 }
 
 
@@ -58,36 +35,12 @@ DSTATUS disk_status (
 /* Inidialize a Drive                                                    */
 /*-----------------------------------------------------------------------*/
 
-DSTATUS disk_initialize (
+DSTATUS disk_initialize(
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-	DSTATUS stat;
-	int result;
-
-	switch (pdrv) {
-	case DEV_RAM :
-		result = RAM_disk_initialize();
-
-		// translate the reslut code here
-
-		return stat;
-
-	case DEV_MMC :
-		result = MMC_disk_initialize();
-
-		// translate the reslut code here
-
-		return stat;
-
-	case DEV_USB :
-		result = USB_disk_initialize();
-
-		// translate the reslut code here
-
-		return stat;
-	}
-	return STA_NOINIT;
+	/* Initialization done in task, nothing to do here */
+	return RES_OK;
 }
 
 
@@ -96,46 +49,24 @@ DSTATUS disk_initialize (
 /* Read Sector(s)                                                        */
 /*-----------------------------------------------------------------------*/
 
-DRESULT disk_read (
+DRESULT disk_read(
 	BYTE pdrv,		/* Physical drive nmuber to identify the drive */
 	BYTE *buff,		/* Data buffer to store read data */
 	LBA_t sector,	/* Start sector in LBA */
 	UINT count		/* Number of sectors to read */
 )
 {
-	DRESULT res;
-	int result;
+	DRESULT ret_val = RES_OK;
+	for (uint32_t i = 0; i < count; i++)
+	{
+        if (E_OK != SDCard_ReadSingleBlock(sector + i, &buff[i * 512]))
+		{
+			ret_val = RES_ERROR;
+			break;
+		}
+    }
 
-	switch (pdrv) {
-	case DEV_RAM :
-		// translate the arguments here
-
-		result = RAM_disk_read(buff, sector, count);
-
-		// translate the reslut code here
-
-		return res;
-
-	case DEV_MMC :
-		// translate the arguments here
-
-		result = MMC_disk_read(buff, sector, count);
-
-		// translate the reslut code here
-
-		return res;
-
-	case DEV_USB :
-		// translate the arguments here
-
-		result = USB_disk_read(buff, sector, count);
-
-		// translate the reslut code here
-
-		return res;
-	}
-
-	return RES_PARERR;
+    return ret_val;
 }
 
 
@@ -146,46 +77,25 @@ DRESULT disk_read (
 
 #if FF_FS_READONLY == 0
 
-DRESULT disk_write (
+DRESULT disk_write(
 	BYTE pdrv,			/* Physical drive nmuber to identify the drive */
 	const BYTE *buff,	/* Data to be written */
 	LBA_t sector,		/* Start sector in LBA */
 	UINT count			/* Number of sectors to write */
 )
 {
-	DRESULT res;
-	int result;
+	DRESULT ret_val = RES_OK;
+	for (uint32_t i = 0; i < count; i++) 
+	{
+		/* TODO shouldnt it be sector + i*512? */
+        if (E_OK != SDCard_WriteSingleBlock(sector + i, &buff[i * 512]))
+		{
+			ret_val = RES_ERROR;
+			break;
+		}
+    }
 
-	switch (pdrv) {
-	case DEV_RAM :
-		// translate the arguments here
-
-		result = RAM_disk_write(buff, sector, count);
-
-		// translate the reslut code here
-
-		return res;
-
-	case DEV_MMC :
-		// translate the arguments here
-
-		result = MMC_disk_write(buff, sector, count);
-
-		// translate the reslut code here
-
-		return res;
-
-	case DEV_USB :
-		// translate the arguments here
-
-		result = USB_disk_write(buff, sector, count);
-
-		// translate the reslut code here
-
-		return res;
-	}
-
-	return RES_PARERR;
+    return ret_val;
 }
 
 #endif
@@ -195,35 +105,63 @@ DRESULT disk_write (
 /* Miscellaneous Functions                                               */
 /*-----------------------------------------------------------------------*/
 
-DRESULT disk_ioctl (
+DRESULT disk_ioctl(
 	BYTE pdrv,		/* Physical drive nmuber (0..) */
 	BYTE cmd,		/* Control code */
 	void *buff		/* Buffer to send/receive control data */
 )
 {
-	DRESULT res;
-	int result;
+	DRESULT ret_val = RES_OK;
 
-	switch (pdrv) {
-	case DEV_RAM :
+    switch (cmd) 
+	{
+        case CTRL_SYNC:
+		{
+            /* Do nothing */
+			break;
+		}
 
-		// Process of the command for the RAM drive
+        case GET_SECTOR_SIZE:
+		{
+            *(uint32_t*)buff = 512;
+			break;
+		}
 
-		return res;
+        case GET_BLOCK_SIZE:
+		{
+            *(uint32_t*)buff = 1;
+			break;
+		}
 
-	case DEV_MMC :
+        case GET_SECTOR_COUNT:
+		{
+            *(uint32_t*)buff = SDCard_GetSectorCount();
+			break;
+		}
 
-		// Process of the command for the MMC/SD card
-
-		return res;
-
-	case DEV_USB :
-
-		// Process of the command the USB drive
-
-		return res;
+        default:
+		{
+			ret_val = RES_PARERR;
+		}
 	}
 
-	return RES_PARERR;
+	return ret_val;
 }
 
+DWORD get_fattime(void)
+{
+    /* Just dummy time 20:02:15 24.06.2025 
+	Year
+	Month
+	Day
+	Hour
+	Minute
+	sec/2 (range 0-29)*/
+
+    return (DWORD)((2025 - 1980) << 25) |
+           (DWORD)(6 << 21) |
+           (DWORD)(24 << 16) |
+           (DWORD)(20 << 11) |
+           (DWORD)(2 << 5) |
+           (DWORD)(15);
+}

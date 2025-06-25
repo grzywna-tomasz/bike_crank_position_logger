@@ -32,6 +32,7 @@
 #define SD_CARD_WRITE_RESPONSE_ACCEPTED (0b00000101)
 #define SD_CARD_WRITE_RESPONSE_MASK     (0b00011111)
 
+
 #define SD_CARD_IDLE_RESP       (0x00U)
 #define SD_CARD_POWER_UP_BUSY   (0x01U)
 #define SD_CARD_ERASE_RESET     (0x02U)
@@ -41,32 +42,41 @@
 #define SD_CARD_ADDRESS_ERROR   (0x20U)
 #define SD_CARD_PARAMETER_ERROR (0x20U)
 
-/** GO_IDLE_STATE */
+/* GO_IDLE_STATE */
 #define SD_CARD_CMD0        (0U)
 #define SD_CARD_CMD0_ARG    (0x00000000U)
 /* CMD0 need CRC to be properly processed. I am using constant as I am not planning to use CRC in the project */
 #define SD_CARD_CMD0_CRC    (0x95U)
 
-/** SEND_IF_COND - verify SD Memory Card interface operating condition.*/
+/* SEND_IF_COND - verify SD Memory Card interface operating condition.*/
 #define SD_CARD_CMD8        (8U)
 #define SD_CARD_CMD8_ARG    (0x000001AAU)
 /* CMD8 need CRC to be properly processed. I am using constant as I am not planning to use CRC in the project */
 #define SD_CARD_CMD8_CRC    (0x87U)
 
+/* Read CSD register */
+#define SD_CARD_CMD9        (9U)
+#define SD_CARD_CMD9_ARG    (0x00000000U)
+
+#define SD_CARD_CSD_REG_LENGTH  (16U)
+
 #define SD_CARD_CMD_NO_CRC  (0x00U)
 
-/** SD_SEND_OP_COND - Initiate initialization process */
+/* SD_SEND_OP_COND - Initiate initialization process */
 #define SD_CARD_CMD41       (41U)
 #define SD_CARD_CMD41_ARG   (0x40000000U)
 
-/** APP_CMD - Indicate the next command is APP_CMD */
+/* APP_CMD - Indicate the next command is APP_CMD */
 #define SD_CARD_CMD55       (55U)
 #define SD_CARD_CMD55_ARG   (0x00000000U)
 
-/** Read Single block */
+/* Read Single block */
 #define SD_CARD_CMD17       (17U)
-/** Write Single block */
+/* Write Single block */
 #define SD_CARD_CMD24       (24U)
+
+
+#define SD_CARD_CSD_VERSION1    (0U)
 
 /* TODO */
 extern SPI_HandleTypeDef hspi1;
@@ -79,6 +89,12 @@ extern const uint8_t SDCard_TxDummyDataBuffer[1024U];
 static Std_ReturnType SDCard_SendCommand(uint8_t *TxDataPtr, uint16_t TxDataSize, uint8_t *RxDataPtr, uint16_t RxDataSize);
 static void SDCard_CommandFillBuffer(uint8_t *TxBuffer, uint8_t Cmd, uint32_t Arg, uint8_t Crc);
 /**********************************OBJECTS*************************************/
+static uint8_t SDCard_MaxSpeed = 0;
+static uint32_t SDCard_BlockLength = 0;
+static uint32_t SDCard_BlockAddressMultiplier = 0;
+static uint32_t SDCard_CSize = 0;
+static uint32_t SDCard_CSizeMult = 0;
+static uint32_t SDCard_SectorCount = 0;
 static uint8_t SDCard_LastErrorResponse = 0;
 
 /* TODO check what size is really needed */
@@ -156,6 +172,8 @@ static Std_ReturnType SDCard_CheckR1PosResp(uint8_t *RxDataPtr, uint16_t RxStart
 
 Std_ReturnType SDCard_InitializeCard(void)
 {
+    /* TODO use it everywhere. And fix function used */
+    uint8_t temporary_buffer[SD_CARD_COMMAND_TX_LENGTH];
     uint16_t response_r1_index = 0;
     Std_ReturnType status = E_OK;
     /* According to information online we should wait 1ms before attempting anything */
@@ -222,6 +240,65 @@ Std_ReturnType SDCard_InitializeCard(void)
         }
     }
 
+    /* Check Data size, max speed */
+    if (E_OK == status)
+    {
+        uint8_t csd_data[SD_CARD_CSD_REG_LENGTH];
+        SDCard_CommandFillBuffer(temporary_buffer, SD_CARD_CMD9, SD_CARD_CMD9_ARG, SD_CARD_CMD_NO_CRC);
+        SD_CARD_CS_LOW();
+        HAL_SPI_Transmit(&hspi1, temporary_buffer, SD_CARD_COMMAND_TX_LENGTH, SD_CARD_SPI_MAX_TIMEOUT);
+
+        /* TODO put it in function as ReadBlock use this */
+        /* Wait for R1 response */
+        for (uint8_t index = 0; index < SD_CARD_COMMAND_NCR_MAX_LENGTH; index++)
+        {
+            HAL_SPI_TransmitReceive(&hspi1, SDCard_TxDummyDataBuffer, temporary_buffer, 1, SD_CARD_SPI_MAX_TIMEOUT);
+            if (SD_CARD_BUS_IDLE_VALUE != temporary_buffer[0])
+            {
+                /* Positive Response */
+                break;
+            }
+        }
+
+        /* TODO put it in function as ReadBlock use this */
+        /* Wait for Start Token */
+        for (uint8_t index = 0; index < SD_CARD_START_TOKEN_AWAITING_CYCLES; index++)
+        {
+            HAL_SPI_TransmitReceive(&hspi1, SDCard_TxDummyDataBuffer, temporary_buffer, 1, SD_CARD_SPI_MAX_TIMEOUT);
+            if (SD_CARD_BUS_IDLE_VALUE != temporary_buffer[0])
+            {
+                /* Positive Response */
+                break;
+            }
+        }
+
+        /* TODO check if CRC is 2byte and received at all */
+        HAL_SPI_TransmitReceive(&hspi1, SDCard_TxDummyDataBuffer, csd_data, SD_CARD_CSD_REG_LENGTH + 2U, SD_CARD_SPI_MAX_TIMEOUT);
+
+        SD_CARD_CS_HIGH();
+
+        /* Check version */
+        if (SD_CARD_CSD_VERSION1 == (csd_data[0] >> 6))
+        {
+            SDCard_MaxSpeed = csd_data[3];
+            SDCard_BlockLength = 1 << (csd_data[5] & 0x0F);
+            SDCard_CSize = ((csd_data[6] & 0x03) << 10) | (csd_data[7] << 2) | ((csd_data[8] & 0xC0) >> 6);
+            SDCard_CSizeMult = ((csd_data[9] & 0x03) << 1) | ((csd_data[10] & 0x80) >> 7);
+            SDCard_SectorCount = (SDCard_CSize + 1) * (1 << (SDCard_CSizeMult + 2));
+            /* Card is Version 1, therefore the adress passed during write command need to be multiplied */
+            SDCard_BlockAddressMultiplier = SDCard_BlockLength;
+        }
+        else
+        {
+            SDCard_CSize = ((csd_data[7] & 0x3F) << 16) | (csd_data[8] << 8) | csd_data[9];
+            SDCard_SectorCount = (SDCard_CSize + 1) * 1024;
+            /* Card is Version 2, therefore the adress used during write is already block adress */
+            SDCard_BlockAddressMultiplier = 1;
+        }
+    }
+
+    /* TODO add Write size length change */
+
     return status;
 }
 
@@ -229,7 +306,7 @@ uint8_t SDCard_ReadSingleBlock(uint32_t block_addr, uint8_t* buffer)
 {
     /* Buffer used for transmitting command data and checking bus for response */
     uint8_t temporary_buffer[SD_CARD_COMMAND_TX_LENGTH];
-    SDCard_CommandFillBuffer(temporary_buffer, SD_CARD_CMD17, block_addr, SD_CARD_CMD_NO_CRC);
+    SDCard_CommandFillBuffer(temporary_buffer, SD_CARD_CMD17, block_addr * SDCard_BlockAddressMultiplier, SD_CARD_CMD_NO_CRC);
     SD_CARD_CS_LOW();
     HAL_SPI_Transmit(&hspi1, temporary_buffer, SD_CARD_COMMAND_TX_LENGTH, SD_CARD_SPI_MAX_TIMEOUT);
 
@@ -273,7 +350,7 @@ uint8_t SDCard_WriteSingleBlock(uint32_t block_addr, const uint8_t* buffer)
 {
     /* Buffer used for transmitting command data and checking bus for response */
     uint8_t temporary_buffer[SD_CARD_COMMAND_TX_LENGTH];
-    SDCard_CommandFillBuffer(temporary_buffer, SD_CARD_CMD24, block_addr, SD_CARD_CMD_NO_CRC);
+    SDCard_CommandFillBuffer(temporary_buffer, SD_CARD_CMD24, block_addr * SDCard_BlockAddressMultiplier, SD_CARD_CMD_NO_CRC);
     SD_CARD_CS_LOW();
     HAL_SPI_Transmit(&hspi1, temporary_buffer, SD_CARD_COMMAND_TX_LENGTH, SD_CARD_SPI_MAX_TIMEOUT);
 
@@ -329,4 +406,9 @@ uint8_t SDCard_WriteSingleBlock(uint32_t block_addr, const uint8_t* buffer)
 
     SD_CARD_CS_HIGH();
     return E_OK;
+}
+
+uint32_t SDCard_GetSectorCount(void)
+{
+    return SDCard_SectorCount;
 }
