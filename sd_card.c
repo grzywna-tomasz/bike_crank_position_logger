@@ -341,7 +341,7 @@ uint8_t SDCard_ReadSingleBlock(uint32_t block_addr, uint8_t* buffer)
         /* TODO clean this up properly */
         return E_NOT_OK;
     }
-    HAL_SPI_TransmitReceive(&hspi1, SDCard_TxDummyDataBuffer, buffer, 512, SD_CARD_SPI_MAX_TIMEOUT);
+    SDCard_Receive(buffer, 512);
     SD_CARD_CS_HIGH();
     return E_OK;
 }
@@ -374,7 +374,8 @@ uint8_t SDCard_WriteSingleBlock(uint32_t block_addr, const uint8_t* buffer)
     temporary_buffer[0] = SD_CARD_START_TOKEN;
     HAL_SPI_Transmit(&hspi1, &temporary_buffer[0], 1, SD_CARD_SPI_MAX_TIMEOUT);
     /* Send data from input buffer */
-    HAL_SPI_Transmit(&hspi1, buffer, 512, SD_CARD_SPI_MAX_TIMEOUT);
+    /* TODO do something about 512 length */
+    SDCard_Transmit(buffer, 512);
 
     /* Wait for response */
     for (uint8_t index = 0; index < SD_CARD_COMMAND_NCR_MAX_LENGTH; index++)

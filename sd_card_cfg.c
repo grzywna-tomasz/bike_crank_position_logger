@@ -4,6 +4,7 @@
 #include "sd_card_cfg.h"
 #include "stm32f4xx_hal.h"
 #include "main.h"
+#include "task.h"
 
 /**********************************DEFINES*************************************/
 #define SD_CARD_SPI_MAX_TIMEOUT             (HAL_MAX_DELAY - 1U)
@@ -13,6 +14,8 @@
 /**********************************PROTOTYPES**********************************/
 
 /**********************************OBJECTS*************************************/
+/* Thread from FreeRTOS */
+extern osThreadId SDCardHandle;
 /* SPI handler - default STM32Cube generated */
 extern SPI_HandleTypeDef hspi1;
 
@@ -160,4 +163,48 @@ Std_ReturnType SDCard_TransmitReceive(uint8_t *TxDataPtr, uint8_t *RxDataPtr, ui
     }
     HAL_GPIO_WritePin(SPI_CS_GPIO_Port, SPI_CS_Pin, GPIO_PIN_SET);
     return ret_val;
+}
+
+Std_ReturnType SDCard_Transmit(const uint8_t *TxDataPtr, uint16_t data_length)
+{
+    Std_ReturnType ret_val = E_OK;
+    if (HAL_OK != HAL_SPI_Transmit_IT(&hspi1, TxDataPtr, data_length))
+    {
+        ret_val = E_NOT_OK;
+    }
+    /* Wait for transmission to end non blocking way. Or 50 ticks */
+    ulTaskNotifyTake(pdFALSE, 20U);
+    return ret_val;
+}
+
+Std_ReturnType SDCard_Receive(uint8_t *RxDataPtr, uint16_t data_length)
+{
+    Std_ReturnType ret_val = E_OK;
+    if (HAL_OK != HAL_SPI_TransmitReceive_IT(&hspi1, SDCard_TxDummyDataBuffer, RxDataPtr, data_length))
+    {
+        ret_val = E_NOT_OK;
+    }
+    /* Wait for transmission to end non blocking way. Or 50 ticks */
+    ulTaskNotifyTake(pdFALSE, 20U);
+    return ret_val;
+}
+
+/* Complete callback from SPI. Used to resume task notification */
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(SDCardHandle, &xHigherPriorityTaskWoken);
+}
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(SDCardHandle, &xHigherPriorityTaskWoken);
+}
+
+/* Complete callback from SPI. Used to resume task notification */
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(SDCardHandle, &xHigherPriorityTaskWoken);
 }

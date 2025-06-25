@@ -52,7 +52,7 @@ osThreadId TMAG5173Handle;
 uint32_t TMAG5173_Buffer[ 128 ];
 osStaticThreadDef_t TMAG5173_ControlBlock;
 osThreadId SDCardHandle;
-uint32_t SDCard_Buffer[ 128 ];
+uint32_t SDCard_Buffer[ 256 ];
 osStaticThreadDef_t SDCard_ControlBlock;
 /* USER CODE BEGIN PV */
 
@@ -132,7 +132,7 @@ int main(void)
   TMAG5173Handle = osThreadCreate(osThread(TMAG5173), NULL);
 
   /* definition and creation of SDCard */
-  osThreadStaticDef(SDCard, SDCard_Task, osPriorityAboveNormal, 0, 128, SDCard_Buffer, &SDCard_ControlBlock);
+  osThreadStaticDef(SDCard, SDCard_Task, osPriorityAboveNormal, 0, 256, SDCard_Buffer, &SDCard_ControlBlock);
   SDCardHandle = osThreadCreate(osThread(SDCard), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -351,9 +351,9 @@ uint16_t test_var = 0x1234;
 /* USER CODE END Header_SDCard_Task */
 void SDCard_Task(void const * argument)
 {
-  Std_ReturnType card_status = E_OK;
   /* USER CODE BEGIN SDCard_Task */
   /* Infinite loop */
+  Std_ReturnType card_status = E_OK;
   card_status = SDCard_InitializeCard();
 
   if (FR_OK != f_mount(&FileSystem, "", 1))
