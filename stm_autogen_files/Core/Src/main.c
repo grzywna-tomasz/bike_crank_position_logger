@@ -35,7 +35,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BUFFERED_LOG_ENTRIES    (50U)
+#define BUFFERED_DATA_LENGTH    (19U)
+#define BUFFER_SIZE             (BUFFERED_LOG_ENTRIES * BUFFERED_DATA_LENGTH)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -49,11 +51,15 @@ I2C_HandleTypeDef hi2c2;
 SPI_HandleTypeDef hspi1;
 
 osThreadId TMAG5173Handle;
-uint32_t TMAG5173_Buffer[ 128 ];
+uint32_t TMAG5173_Buffer[ 256 ];
 osStaticThreadDef_t TMAG5173_ControlBlock;
 osThreadId SDCardHandle;
 uint32_t SDCard_Buffer[ 256 ];
 osStaticThreadDef_t SDCard_ControlBlock;
+
+FATFS FileSystem;
+FIL file;
+UINT BytesWrittenInfo;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -128,7 +134,7 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of TMAG5173 */
-  osThreadStaticDef(TMAG5173, Tmag5173_Task, osPriorityNormal, 0, 128, TMAG5173_Buffer, &TMAG5173_ControlBlock);
+  osThreadStaticDef(TMAG5173, Tmag5173_Task, osPriorityNormal, 0, 256, TMAG5173_Buffer, &TMAG5173_ControlBlock);
   TMAG5173Handle = osThreadCreate(osThread(TMAG5173), NULL);
 
   /* definition and creation of SDCard */
@@ -314,6 +320,26 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+void uint16Value_ToBufferASCII(uint8_t *buffer, int16_t value)
+{
+  uint16_t unsigned_value;
+  if (value < 0)
+  {
+    buffer[0] = '-';
+    unsigned_value = -value;
+  }
+  else
+  {
+    buffer[0] = '0';
+    unsigned_value = value;
+  }
+  buffer[1] = ((unsigned_value / 1000) % 10) + '0';
+  buffer[2] = ((unsigned_value / 100) % 10) + '0';
+  buffer[3] = ((unsigned_value / 10) % 10) + '0';
+  buffer[4] = (unsigned_value % 10) + '0';
+  buffer[5] = ',';
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_Tmag5173_Task */
@@ -323,26 +349,49 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_Tmag5173_Task */
+uint8_t DataBuffer0[BUFFER_SIZE];
+uint8_t DataBuffer1[BUFFER_SIZE];
+uint8_t BufferIndexUpdatedNow = 0;
 void Tmag5173_Task(void const * argument)
 {
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    TMAG5173_MainFunction();
-    osDelay(10);
-  }
+    /* USER CODE BEGIN 5 */
+    TMAG5173_InitializeSensor();
+    
+    /* Infinite loop */
+    for (;;)
+    {
+        uint16_t buffer_index = 0;
+        uint8_t *buffer;
+        if (0 == BufferIndexUpdatedNow)
+        {
+            buffer = DataBuffer0;
+        }
+        else
+        {
+            buffer = DataBuffer1;
+        }
+
+        for(uint16_t i = 0; i < BUFFERED_LOG_ENTRIES; i++)
+        {
+            TMAG5173_SensorDataType sensor_data;
+            /* Read sensor data and write them to buffer */
+            TMAG5173_ReadData(&sensor_data);
+            uint16Value_ToBufferASCII(&buffer[buffer_index], sensor_data.x_axis);
+            buffer_index += 6;
+            uint16Value_ToBufferASCII(&buffer[buffer_index], sensor_data.y_axis);
+            buffer_index += 6;
+            uint16Value_ToBufferASCII(&buffer[buffer_index], sensor_data.z_axis);
+            buffer_index += 6;
+            buffer[buffer_index++] = '\n';
+            osDelay(1);
+        }
+        BufferIndexUpdatedNow = (BufferIndexUpdatedNow + 1) % 2;
+        xTaskNotifyGive(SDCardHandle);
+    }
   /* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_SDCard_Task */
-
-static uint8_t Main_RxDataBuffer[1024U];
-
-FATFS FileSystem;
-FIL file;
-uint32_t BytesWrittenInfo;
-uint16_t test_var = 0x1234;
 /**
 * @brief Function implementing the SDCard thread.
 * @param argument: Not used
@@ -351,53 +400,71 @@ uint16_t test_var = 0x1234;
 /* USER CODE END Header_SDCard_Task */
 void SDCard_Task(void const * argument)
 {
-  /* USER CODE BEGIN SDCard_Task */
-  /* Infinite loop */
-  Std_ReturnType card_status = E_OK;
-  card_status = SDCard_InitializeCard();
+    /* USER CODE BEGIN SDCard_Task */
+    /* Infinite loop */
+    Std_ReturnType card_status = E_OK;
+    card_status = SDCard_InitializeCard();
 
-  if (FR_OK != f_mount(&FileSystem, "", 1))
-  {
-    while(1);
-  }
+    if (FR_OK != f_mount(&FileSystem, "", 1))
+    {
+        DET_ErrorReception();
+    }
+    
+    /* Create file with Append mode */
+    if (FR_OK != f_open(&file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS))
+    {
+        DET_ErrorReception();
+    }
+
+    /* Set Read/Write pointer to end of file to prepare for data writing */
+    if (FR_OK != f_lseek(&file, f_size(&file)))
+    {
+        DET_ErrorReception();
+    }
+
+    /* Indicate that there is new record */
+    f_printf(&file, "######\n");
+    f_close(&file);
   
-  /* Create file with Append mode */
-  if (FR_OK != f_open(&file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS))
-  {
-    while(1);
-  }
+    for(;;)
+    {
+        uint8_t *buffer;
+        /* Use buffer which is not updated right now */
+        if (1 == BufferIndexUpdatedNow)
+        {
+            buffer = DataBuffer0;
+        }
+        else
+        {
+            buffer = DataBuffer1;
+        }
 
-  /* Set Read/Write pointer to end of file to prepare for data writing */
-  if (FR_OK != f_lseek(&file, f_size(&file)))
-  {
-    while(1);
-  }
+        /* Create file with Append mode */
+        if (FR_OK != f_open(&file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS))
+        {
+            DET_ErrorReception();
+        }
 
-  /* Indicate that there is new record */
-  f_printf(&file, "######");
-  // osDelay(10);
-  for (uint8_t i = 0; i < 255; i++)
-  {
-    f_printf(&file, "%d, %d\n", i, test_var);
-  }
-  // osDelay(10);
-  f_printf(&file, "%d, %d\n", 12, test_var);
-  osDelay(10);
+        /* Set Read/Write pointer to end of file to prepare for data writing */
+        if (FR_OK != f_lseek(&file, f_size(&file)))
+        {
+            DET_ErrorReception();
+        }
 
-  // f_write(&file, "Hello SD Card!\r\n", 16, &BytesWrittenInfo);
-  f_close(&file);
-  for(;;)
-  {
-    // if (card_status == E_OK)
-    // {
-    //   card_status = SDCard_ReadSingleBlock(0x000000200U, Main_RxDataBuffer);
-    // }
-    // else
-    // {
-    //   DET_ErrorReception();
-    // }
-    osDelay(10);
-  }
+        /* Write logged file */
+        if (FR_OK != f_write(&file, buffer, BUFFER_SIZE, &BytesWrittenInfo))
+        {
+            DET_ErrorReception();
+        }
+
+        /* Close file. If something crash we can have at least part data */
+        if (FR_OK != f_close(&file))
+        {
+            DET_ErrorReception();
+        }
+        /* Wait for buffor to be filled with data */
+        ulTaskNotifyTake(pdFALSE, 10000U);
+    }
   /* USER CODE END SDCard_Task */
 }
 

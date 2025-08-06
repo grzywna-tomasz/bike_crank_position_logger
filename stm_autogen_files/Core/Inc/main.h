@@ -71,7 +71,8 @@ void Error_Handler(void);
 /* Catch any development error */
 #define DET_ErrorReception()    while(1)
 #else
-#define DET_ErrorReception()
+/* Perform Reset if something goes wrong */
+#define DET_ErrorReception()    SCB->AIRCR = (0x5FA << SCB_AIRCR_VECTKEY_Pos) | SCB_AIRCR_SYSRESETREQ_Msk
 #endif
 /* USER CODE END Private defines */
 
