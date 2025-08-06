@@ -9,7 +9,7 @@ ifeq ($(DEBUG), TRUE)
     C_DEFINES = -DDEBUG
 else
     C_DEFINES =
-    OPTIM_LEVEL = -O2
+    OPTIM_LEVEL = -O2 -gdwarf-2
 endif
 
 COMPILER_PATH = $(subst \,/,$(ARM_NONE_EABI))

@@ -15,6 +15,17 @@
             "options": {"cwd": "makefile"}
         },
         {
+            "label": "build release",
+            "type": "shell",
+            "command": "make all DEBUG=FALSE -j12",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {"cwd": "makefile"}
+        },
+        {
             "label": "build clean",
             "type": "shell",
             "command": "make clean",

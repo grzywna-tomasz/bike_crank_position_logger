@@ -1,8 +1,15 @@
 {
     "files.associations": {
         "diskio.h": "c",
-        "sd_card.h": "c"
-    }
+        "sd_card.h": "c",
+        "main.h": "c",
+        "sd_card_cfg.h": "c",
+        "std_types.h": "c",
+        "projdefs.h": "c",
+        "stm32f4xx_hal.h": "c",
+        "cmsis_os.h": "c"
+    },
+    "editor.detectIndentation": false
 } // {
 //     "cmake.configureOnOpen": false,
 //         "files.exclude": {
