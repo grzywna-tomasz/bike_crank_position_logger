@@ -380,7 +380,7 @@ uint8_t SDCard_WriteSingleBlock(uint32_t block_addr, const uint8_t* buffer)
     /* Wait for response */
     for (uint8_t index = 0; index < SD_CARD_COMMAND_NCR_MAX_LENGTH; index++)
     {
-        HAL_SPI_TransmitReceive(&hspi1, SDCard_TxDummyDataBuffer, temporary_buffer, 1, SD_CARD_SPI_MAX_TIMEOUT);
+        SDCard_Receive(temporary_buffer, 1);
         if (SD_CARD_BUS_IDLE_VALUE != temporary_buffer[0])
         {
             /* Positive Response */
@@ -397,7 +397,7 @@ uint8_t SDCard_WriteSingleBlock(uint32_t block_addr, const uint8_t* buffer)
     /* Wait until SD card finnish */
     for (uint8_t index = 0; index < SD_CARD_BUSY_AWAITING_CYCLES; index++)
     {
-        HAL_SPI_TransmitReceive(&hspi1, SDCard_TxDummyDataBuffer, temporary_buffer, 1, SD_CARD_SPI_MAX_TIMEOUT);
+        SDCard_Receive(temporary_buffer, 1);
         if (SD_CARD_BUS_BUSY_VALUE != temporary_buffer[0])
         {
             /* Positive Response */
